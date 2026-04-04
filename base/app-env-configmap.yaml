@@ -1,0 +1,18 @@
+# ═══════════════════════════════════════════════════════
+#  ConfigMap กลาง — config ที่ทุก pod ใช้ร่วมกัน
+#  แก้ไขที่นี่ที่เดียว → ทุก pod ได้ค่าเดียวกัน
+# ═══════════════════════════════════════════════════════
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-env
+  namespace: oway
+data:
+  TZ: "Asia/Bangkok"
+  APP_TIMEZONE: "Asia/Bangkok"
+  DB_HOST: "mysql"
+  DB_PORT: "3306"
+  DB_DATABASE: "mex_sellin"
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+  CACHE_TTL: "30"

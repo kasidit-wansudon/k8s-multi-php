@@ -1,0 +1,65 @@
+# ═══════════════════════════════════════════════════════
+#  PHP-FPM 8.4 — สำหรับ Laravel
+#  ★ replicas ควบคุมโดย HPA (min 2, max 8)
+# ═══════════════════════════════════════════════════════
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: php84
+  namespace: oway
+  labels:
+    app: php84
+    php-version: "8.4"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: php84
+  template:
+    metadata:
+      labels:
+        app: php84
+        php-version: "8.4"
+    spec:
+      serviceAccountName: k8s-reader
+      containers:
+        - name: php84
+          image: docker.io/library/oway-php84:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9000
+          envFrom:
+            - configMapRef:
+                name: app-env
+            - secretRef:
+                name: mysql-secret
+          volumeMounts:
+            - name: laravel-code
+              mountPath: /var/www/laravel
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+      volumes:
+        - name: laravel-code
+          hostPath:
+            path: /HOST_APPS/laravel
+            type: Directory
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: php84
+  namespace: oway
+spec:
+  selector:
+    app: php84
+  ports:
+    - port: 9000
+      targetPort: 9000
+  type: ClusterIP

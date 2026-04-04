@@ -1,0 +1,52 @@
+# ═══════════════════════════════════════════════════════
+#  phpMyAdmin — จัดการ DB ที่คุ้นเคย
+# ═══════════════════════════════════════════════════════
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: phpmyadmin
+  namespace: oway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: phpmyadmin
+  template:
+    metadata:
+      labels:
+        app: phpmyadmin
+    spec:
+      containers:
+        - name: phpmyadmin
+          image: phpmyadmin:latest
+          imagePullPolicy: IfNotPresent  # ← ใช้ image ที่ load เข้า node แล้ว ไม่ pull จาก Docker Hub
+          ports:
+            - containerPort: 80
+          env:
+            - name: PMA_HOST
+              value: "mysql"           # ชี้ไป MySQL Service
+            - name: PMA_USER
+              value: "oway"
+            - name: PMA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: MYSQL_PASSWORD
+            - name: APACHE_PORT       # ← แก้ปัญหา K8s inject PHPMYADMIN_PORT=tcp://... ทำให้ Apache พัง
+              value: "80"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: phpmyadmin
+  namespace: oway
+spec:
+  selector:
+    app: phpmyadmin
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 30888              # ★ เปิด http://localhost:30888
+  type: NodePort

@@ -1,0 +1,35 @@
+# ConfigMap — SQL สำหรับสร้างตารางตัวอย่าง
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-init-sql
+  namespace: oway
+data:
+  01-sample.sql: |
+    CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        username VARCHAR(50) UNIQUE NOT NULL,
+        email VARCHAR(100) NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+    CREATE TABLE IF NOT EXISTS products (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        sku VARCHAR(50) UNIQUE NOT NULL,
+        name VARCHAR(200) NOT NULL,
+        price DECIMAL(10,2) DEFAULT 0,
+        stock INT DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+    INSERT INTO users (username, email) VALUES
+    ('admin', 'admin@oway.com'),
+    ('staff1', 'staff1@oway.com'),
+    ('staff2', 'staff2@oway.com');
+
+    INSERT INTO products (sku, name, price, stock) VALUES
+    ('PROD-001', 'OPPO A60', 5990.00, 150),
+    ('PROD-002', 'OPPO Enco Air4', 1290.00, 300),
+    ('PROD-003', 'Case OPPO A60', 290.00, 500),
+    ('PROD-004', 'USB-C Cable 1m', 190.00, 800),
+    ('PROD-005', 'Powerbank 10000mAh', 690.00, 200);

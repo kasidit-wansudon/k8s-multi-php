@@ -1,0 +1,64 @@
+# ═══════════════════════════════════════════════════════
+#  PHP-FPM 8.3 — สำหรับ Laminas MVC
+#  ★ replicas ควบคุมโดย HPA (min 1, max 6)
+# ═══════════════════════════════════════════════════════
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: php74
+  namespace: oway
+  labels:
+    app: php74
+    php-version: "8.3"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: php74
+  template:
+    metadata:
+      labels:
+        app: php74
+        php-version: "8.3"
+    spec:
+      containers:
+        - name: php74
+          image: docker.io/library/oway-php83:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9000
+          envFrom:
+            - configMapRef:
+                name: app-env
+            - secretRef:
+                name: mysql-secret
+          volumeMounts:
+            - name: zend2-code
+              mountPath: /var/www/zend2
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "128Mi"
+              cpu: "250m"
+      volumes:
+        - name: zend2-code
+          hostPath:
+            path: /HOST_APPS/zend2
+            type: Directory
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: php74
+  namespace: oway
+spec:
+  selector:
+    app: php74
+  ports:
+    - port: 9000
+      targetPort: 9000
+  type: ClusterIP

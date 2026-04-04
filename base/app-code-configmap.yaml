@@ -1,0 +1,50 @@
+# ConfigMap — โค้ด PHP สำหรับทดสอบ (ใน production จะใช้ Docker image แทน)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zend2-app-code
+  namespace: oway
+data:
+  index.php: |
+    <?php
+    echo "<h1>OWAY — Zend 2 (PHP " . PHP_VERSION . ")</h1>";
+    echo "<p><b>Hostname:</b> " . gethostname() . "</p>";
+    echo "<p><b>Pod:</b> ถ้า refresh หลายๆ ครั้ง จะเห็น hostname เปลี่ยน = K8s load balance ให้!</p>";
+    echo "<hr>";
+    try {
+        $pdo = new PDO('mysql:host=mysql;dbname=mex_sellin;charset=utf8mb4','oway','oway_secret');
+        $ver = $pdo->query("SELECT VERSION() as v")->fetch()['v'];
+        echo "<p style='color:green'>✅ MySQL: $ver</p>";
+        $tables = $pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
+        echo "<ul>";
+        foreach($tables as $t) echo "<li>$t</li>";
+        echo "</ul>";
+    } catch(Exception $e) {
+        echo "<p style='color:red'>❌ " . $e->getMessage() . "</p>";
+    }
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: laravel-app-code
+  namespace: oway
+data:
+  index.php: |
+    <?php
+    echo "<h1>OWAY — Laravel (PHP " . PHP_VERSION . ")</h1>";
+    echo "<p><b>Hostname:</b> " . gethostname() . "</p>";
+    echo "<p><b>Pod:</b> refresh แล้ว hostname จะเปลี่ยน = K8s load balance!</p>";
+    echo "<p><b>Fibers:</b> " . (class_exists('Fiber') ? '✅' : '❌') . "</p>";
+    echo "<hr>";
+    try {
+        $pdo = new PDO('mysql:host=mysql;dbname=mex_sellin;charset=utf8mb4','oway','oway_secret');
+        $ver = $pdo->query("SELECT VERSION() as v")->fetch()['v'];
+        echo "<p style='color:green'>✅ MySQL: $ver (DB เดียวกับ Zend 2!)</p>";
+        $tables = $pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
+        echo "<ul>";
+        foreach($tables as $t) echo "<li>$t</li>";
+        echo "</ul>";
+    } catch(Exception $e) {
+        echo "<p style='color:red'>❌ " . $e->getMessage() . "</p>";
+    }

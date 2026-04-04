@@ -1,0 +1,65 @@
+# ═══════════════════════════════════════════════════════
+#  HPA — Horizontal Pod Autoscaler
+#  Scale อัตโนมัติตาม CPU usage
+# ═══════════════════════════════════════════════════════
+
+# Laravel (php84): min 2 → max 8 pods
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: php84-hpa
+  namespace: oway
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: php84
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 50   # scale up เมื่อ CPU เฉลี่ย > 50%
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 10   # scale up เร็ว (demo)
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 10
+    scaleDown:
+      stabilizationWindowSeconds: 30  # scale down รอ 30s
+
+---
+# Laminas (php74): min 1 → max 6 pods
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: php74-hpa
+  namespace: oway
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: php74
+  minReplicas: 1
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 50
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 10
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 10
+    scaleDown:
+      stabilizationWindowSeconds: 30

@@ -1,0 +1,76 @@
+# ═══════════════════════════════════════════════════════
+#  OWAY K8s Multi-PHP — .gitignore
+# ═══════════════════════════════════════════════════════
+
+# ── PHP / Composer Dependencies ──
+apps/laravel/vendor/
+apps/zend2/vendor/
+apps/*/composer.lock
+
+# ── Laravel ──
+apps/laravel/.env
+apps/laravel/.env.backup
+apps/laravel/.env.production
+apps/laravel/storage/framework/cache/data/*
+apps/laravel/storage/framework/sessions/*
+apps/laravel/storage/framework/testing/*
+apps/laravel/storage/framework/views/*
+apps/laravel/storage/logs/*
+apps/laravel/bootstrap/cache/packages.php
+apps/laravel/bootstrap/cache/services.php
+apps/laravel/database/database.sqlite
+apps/laravel/public/hot
+apps/laravel/public/build/
+apps/laravel/public/storage
+
+# ── Laminas / Zend ──
+apps/zend2/config/autoload/local.php
+apps/zend2/config/autoload/*.local.php
+apps/zend2/data/cache/*
+
+# ── Node.js (Laravel Vite) ──
+apps/laravel/node_modules/
+apps/zend2/node_modules/
+node_modules/
+
+# ── TLS Certificates ──
+certs/*.crt
+certs/*.key
+certs/*.pem
+
+# ── OS Files ──
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# ── IDE / Editor ──
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+.project
+.settings/
+
+# ── Docker ──
+*.tar
+docker-compose.override.yml
+
+# ── Kubernetes Temp ──
+tmp-yaml/
+
+# ── MySQL Data (local) ──
+mysql/data/
+
+# ── Logs ──
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── PHP ──
+*.cache
+*.phpunit.result.cache
+.phpunit.cache/
+phpstan.neon.local

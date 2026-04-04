@@ -1,0 +1,95 @@
+# ═══════════════════════════════════════════════════════
+#  MySQL 5.7 — Database ร่วมกัน
+#  เทียบกับ Docker: เหมือน mysql service ใน docker-compose
+# ═══════════════════════════════════════════════════════
+
+# --- PersistentVolumeClaim (เก็บข้อมูล MySQL ถาวร) ---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc
+  namespace: oway
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+# --- Deployment (ตัว MySQL จริง) ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+  namespace: oway
+  labels:
+    app: mysql
+spec:
+  replicas: 1                    # DB ควรมี 1 ตัวเท่านั้น
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+        - name: mysql
+          image: mariadb:10.11          # ← ใช้ MariaDB แทน MySQL 5.7 (มี ARM + compatible)
+          imagePullPolicy: IfNotPresent  # ← ใช้ image ที่ load ไว้แล้ว
+          ports:
+            - containerPort: 3306
+          envFrom:
+            - configMapRef:
+                name: app-env
+            - secretRef:
+                name: mysql-secret
+          args:
+            - "--character-set-server=utf8mb4"
+            - "--collation-server=utf8mb4_unicode_ci"
+            - "--innodb-buffer-pool-size=256M"       # cache data/index ใน RAM (เดิม 128M)
+            - "--innodb-buffer-pool-instances=2"     # parallel access
+            - "--innodb-io-capacity=1000"            # IOPS สำหรับ SSD (เดิม 200)
+            - "--innodb-read-io-threads=4"
+            - "--innodb-write-io-threads=4"
+            - "--max-connections=300"                # รองรับ pods เยอะขึ้น (เดิม 151)
+            - "--thread-cache-size=32"               # ไม่ต้อง spawn thread ใหม่ทุก connection
+            - "--tmp-table-size=64M"                 # complex query ไม่ต้อง spill ไป disk
+            - "--max-heap-table-size=64M"
+          volumeMounts:
+            - name: mysql-data
+              mountPath: /var/lib/mysql
+            - name: mysql-init
+              mountPath: /docker-entrypoint-initdb.d
+          resources:
+            requests:
+              memory: "384Mi"
+              cpu: "500m"
+            limits:
+              memory: "768Mi"
+              cpu: "1500m"   # เพิ่มจาก 500m → 1.5 core
+      volumes:
+        - name: mysql-data
+          persistentVolumeClaim:
+            claimName: mysql-pvc
+        - name: mysql-init
+          configMap:
+            name: mysql-init-sql
+
+---
+# --- Service (ให้ app อื่นเข้าถึง MySQL ได้) ---
+# ★ เหมือนกับ Docker network — ใช้ชื่อ "mysql" เป็น hostname ได้เลย
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  namespace: oway
+spec:
+  selector:
+    app: mysql
+  ports:
+    - port: 3306
+      targetPort: 3306
+  type: ClusterIP               # ใช้ภายใน cluster เท่านั้น
