@@ -27,8 +27,16 @@ if command -v k3s &>/dev/null; then
   if ! systemctl is-active --quiet k3s 2>/dev/null; then
     echo "   ⚠️  K3s service ไม่ทำงาน — กำลังเริ่ม..."
     sudo systemctl start k3s
-    sleep 5
   fi
+  # รอจน K3s API พร้อมจริง
+  echo "   ⏳ Waiting for K3s API..."
+  for i in $(seq 1 30); do
+    if $KUBECTL get nodes &>/dev/null; then
+      echo "   ✅ K3s API ready"
+      break
+    fi
+    sleep 2
+  done
   # ตั้ง KUBECONFIG ให้ kubectl ใช้ได้
   export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
   # ถ้า kubectl ไม่มี ใช้ k3s kubectl แทน
@@ -152,10 +160,8 @@ for IMAGE in "${IMAGES[@]}"; do
   fi
 
   if [ "$RUNTIME" = "k3s" ]; then
-    # K3s: save จาก Docker แล้ว import เข้า K3s containerd
-    echo "   ⏳ $IMAGE → K3s containerd"
-    docker save "$IMAGE" | sudo k3s ctr images import - &>/dev/null
-    echo "   ✅ $IMAGE done"
+    # K3s --docker: ใช้ Docker images โดยตรง ไม่ต้อง import
+    echo "   ✅ $IMAGE (Docker backend — ใช้ได้เลย)"
   else
     # Docker Desktop: load เข้าทุก node
     for NODE in $NODES; do
