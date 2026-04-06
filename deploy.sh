@@ -114,7 +114,7 @@ echo "🐳 Building custom PHP images..."
 
 if ! docker image inspect oway-php83:latest &>/dev/null; then
   echo "   ⏳ Building oway-php83 (PHP 8.3-FPM + Redis สำหรับ Laminas)..."
-  docker build -f "$SCRIPT_DIR/docker/php83.Dockerfile" \
+  docker build --network=host -f "$SCRIPT_DIR/docker/php83.Dockerfile" \
     -t oway-php83:latest "$SCRIPT_DIR/docker"
   echo "   ✅ oway-php83 built"
 else
@@ -123,7 +123,7 @@ fi
 
 if ! docker image inspect oway-php84:latest &>/dev/null; then
   echo "   ⏳ Building oway-php84 (PHP 8.4-FPM + Redis สำหรับ Laravel)..."
-  docker build -f "$SCRIPT_DIR/docker/php84.Dockerfile" \
+  docker build --network=host -f "$SCRIPT_DIR/docker/php84.Dockerfile" \
     -t oway-php84:latest "$SCRIPT_DIR/docker"
   echo "   ✅ oway-php84 built"
 else
