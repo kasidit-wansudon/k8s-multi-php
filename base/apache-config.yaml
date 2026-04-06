@@ -7,8 +7,8 @@ metadata:
 data:
   httpd.conf: |
     ServerRoot "/usr/local/apache2"
-    Listen 662
-    Listen 663
+    Listen 665
+    Listen 666
     LoadModule mpm_event_module modules/mod_mpm_event.so
     LoadModule authn_core_module modules/mod_authn_core.so
     LoadModule authz_core_module modules/mod_authz_core.so
@@ -37,14 +37,14 @@ data:
 
   zend2.conf: |
     # HTTP → redirect to HTTPS
-    <VirtualHost *:662>
+    <VirtualHost *:665>
         ServerName zend2.localhost
         RewriteEngine On
-        RewriteRule ^(.*)$ https://zend2.localhost:663$1 [R=301,L]
+        RewriteRule ^(.*)$ https://zend2.localhost:666$1 [R=301,L]
     </VirtualHost>
 
     # HTTPS
-    <VirtualHost *:663>
+    <VirtualHost *:666>
         ServerName zend2.localhost
         DocumentRoot /var/www/zend2/public
         SSLEngine on
@@ -62,14 +62,14 @@ data:
 
   laravel.conf: |
     # HTTP → redirect to HTTPS
-    <VirtualHost *:662>
+    <VirtualHost *:665>
         ServerName laravel.localhost
         RewriteEngine On
-        RewriteRule ^(.*)$ https://laravel.localhost:663$1 [R=301,L]
+        RewriteRule ^(.*)$ https://laravel.localhost:666$1 [R=301,L]
     </VirtualHost>
 
     # HTTPS
-    <VirtualHost *:663>
+    <VirtualHost *:666>
         ServerName laravel.localhost
         DocumentRoot /var/www/laravel/public
         SSLEngine on

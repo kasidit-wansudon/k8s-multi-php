@@ -282,12 +282,12 @@ pkill -f "kubectl port-forward" 2>/dev/null || true
 sleep 1
 
 if [ "$RUNTIME" = "k3s" ]; then
-  # K3s: NodePort เปิดอยู่แล้วที่ 662, 663, 664
-  echo "   ✅ NodePort พร้อมใช้ (662/663/664)"
+  # K3s: NodePort เปิดอยู่แล้วที่ 665, 666, 667
+  echo "   ✅ NodePort พร้อมใช้ (665/666/667)"
 else
-  $KUBECTL port-forward svc/apache     662:662  -n oway &>/dev/null &
-  $KUBECTL port-forward svc/apache     663:663  -n oway &>/dev/null &
-  $KUBECTL port-forward svc/phpmyadmin 664:664  -n oway &>/dev/null &
+  $KUBECTL port-forward svc/apache     665:665  -n oway &>/dev/null &
+  $KUBECTL port-forward svc/apache     666:666  -n oway &>/dev/null &
+  $KUBECTL port-forward svc/phpmyadmin 667:667  -n oway &>/dev/null &
   echo "   ✅ Port-forward running in background"
 fi
 
@@ -312,20 +312,20 @@ $KUBECTL get pods -n oway
 echo ""
 
 if [ "$RUNTIME" = "k3s" ]; then
-  echo "  🌐 Laminas MVC   → https://$SERVER_IP:663  (Host: zend2.localhost)"
-  echo "  🚀 Laravel       → https://$SERVER_IP:663  (Host: laravel.localhost)"
-  echo "  📈 K8s Console   → https://$SERVER_IP:663/k8s"
-  echo "  📊 phpMyAdmin    → http://$SERVER_IP:664"
+  echo "  🌐 Laminas MVC   → https://$SERVER_IP:666  (Host: zend2.localhost)"
+  echo "  🚀 Laravel       → https://$SERVER_IP:666  (Host: laravel.localhost)"
+  echo "  📈 K8s Console   → https://$SERVER_IP:666/k8s"
+  echo "  📊 phpMyAdmin    → http://$SERVER_IP:667"
   echo ""
   echo "  💡 เพิ่มใน /etc/hosts ของเครื่อง client:"
   echo "     $SERVER_IP  zend2.localhost laravel.localhost"
   echo ""
   echo "  🔒 Self-signed cert — browser จะขึ้น warning (ปกติสำหรับ dev/lab)"
 else
-  echo "  🌐 Laminas MVC   → https://zend2.localhost:663"
-  echo "  🚀 Laravel       → https://laravel.localhost:663"
-  echo "  📈 K8s Console   → https://laravel.localhost:663/k8s"
-  echo "  📊 phpMyAdmin    → http://localhost:664"
+  echo "  🌐 Laminas MVC   → https://zend2.localhost:666"
+  echo "  🚀 Laravel       → https://laravel.localhost:666"
+  echo "  📈 K8s Console   → https://laravel.localhost:666/k8s"
+  echo "  📊 phpMyAdmin    → http://localhost:667"
   echo ""
   echo "  🔒 HTTPS พร้อมใช้ — mkcert CA ติดตั้งใน Mac แล้ว browser ไม่ขึ้น warning"
 fi

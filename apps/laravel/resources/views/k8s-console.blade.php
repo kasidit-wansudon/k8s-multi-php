@@ -228,8 +228,8 @@ function startLoad(target, concurrency) {
     loadCount = 0;
     loadTarget = concurrency;
     const urls = [];
-    if (target === 'php84' || target === 'both') urls.push('https://laravel.localhost:30443/?loops=800000');
-    if (target === 'php74' || target === 'both') urls.push('https://zend2.localhost:30443/?loops=800000');
+    if (target === 'php84' || target === 'both') urls.push('https://laravel.localhost:666/?loops=800000');
+    if (target === 'php74' || target === 'both') urls.push('https://zend2.localhost:666/?loops=800000');
 
     document.getElementById('load-status').innerHTML = '<span class="active">⚡ กำลังยิง requests... (loops=800000 ต่อ request) — รอดู HPA scale up</span>';
 

@@ -18,18 +18,18 @@ if command -v k3s &>/dev/null; then
   SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
   [ -z "$SERVER_IP" ] && SERVER_IP="127.0.0.1"
   # K3s: NodePort เข้าตรง — ใช้ -k (insecure) + resolve header
-  LARAVEL="https://$SERVER_IP:30443"
-  LAMINAS="https://$SERVER_IP:30443"
+  LARAVEL="https://$SERVER_IP:666"
+  LAMINAS="https://$SERVER_IP:666"
   # curl ต้อง resolve domain ไปที่ server IP
-  CURL_LARAVEL="curl -sk --resolve laravel.localhost:30443:$SERVER_IP https://laravel.localhost:30443"
-  CURL_LAMINAS="curl -sk --resolve zend2.localhost:30443:$SERVER_IP https://zend2.localhost:30443"
+  CURL_LARAVEL="curl -sk --resolve laravel.localhost:666:$SERVER_IP https://laravel.localhost:666"
+  CURL_LAMINAS="curl -sk --resolve zend2.localhost:666:$SERVER_IP https://zend2.localhost:666"
 else
   RUNTIME="desktop"
   KUBECTL="kubectl"
-  CURL_LARAVEL="curl -sk https://laravel.localhost:30443"
-  CURL_LAMINAS="curl -sk https://zend2.localhost:30443"
-  LARAVEL="https://laravel.localhost:30443"
-  LAMINAS="https://zend2.localhost:30443"
+  CURL_LARAVEL="curl -sk https://laravel.localhost:666"
+  CURL_LAMINAS="curl -sk https://zend2.localhost:666"
+  LARAVEL="https://laravel.localhost:666"
+  LAMINAS="https://zend2.localhost:666"
 fi
 
 GREEN='\033[0;32m'

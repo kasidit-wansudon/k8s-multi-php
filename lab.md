@@ -66,7 +66,7 @@ phpmyadmin-xxx                1/1     Running   0
 
 ```bash
 for i in $(seq 1 10); do
-  curl -sk https://laravel.localhost:30443 | grep -o 'val r">[^<]*'
+  curl -sk https://laravel.localhost:666 | grep -o 'val r">[^<]*'
 done
 ```
 
@@ -78,7 +78,7 @@ done
 
 ### Test 1.2 — เปิดหน้า Benchmark แล้วรีเฟรช
 
-**URL:** https://laravel.localhost:30443
+**URL:** https://laravel.localhost:666
 
 สังเกตบรรทัด:
 ```
@@ -113,13 +113,13 @@ kubectl exec -n oway deployment/redis -- redis-cli FLUSHALL
 
 **Step 2: Request แรก (cache miss)**
 ```bash
-curl -sk https://laravel.localhost:30443 | grep -o '[0-9.]* ms'
+curl -sk https://laravel.localhost:666 | grep -o '[0-9.]* ms'
 ```
 สังเกต DB Time — ควรเป็น 20-200ms
 
 **Step 3: Request ที่ 2 (cache hit)**
 ```bash
-curl -sk https://laravel.localhost:30443 | grep -o '[0-9.]* ms\|cached'
+curl -sk https://laravel.localhost:666 | grep -o '[0-9.]* ms\|cached'
 ```
 
 **Expected:**
@@ -132,7 +132,7 @@ curl -sk https://laravel.localhost:30443 | grep -o '[0-9.]* ms\|cached'
 
 ### Test 2.2 — Cache Miss vs Cache Hit (Laminas + Doctrine ORM)
 
-เหมือน Test 2.1 แต่ใช้ URL: https://zend2.localhost:30443
+เหมือน Test 2.1 แต่ใช้ URL: https://zend2.localhost:666
 
 **Expected:**
 - Request 1: DB Time ~100-500ms (Doctrine ORM + JOIN ซับซ้อน)
@@ -178,13 +178,13 @@ kubectl exec -n oway deployment/redis -- redis-cli TTL "bq:<key>"
 ```bash
 # 1. Flush และดู miss
 kubectl exec -n oway deployment/redis -- redis-cli FLUSHALL
-curl -sk https://laravel.localhost:30443 > /dev/null  # miss
+curl -sk https://laravel.localhost:666 > /dev/null  # miss
 
 # 2. รอ 31 วินาที
 sleep 31
 
 # 3. Request ใหม่ — ควร miss อีกครั้ง (TTL หมด)
-curl -sk https://laravel.localhost:30443 | grep -o 'val y">[0-9.]*'
+curl -sk https://laravel.localhost:666 | grep -o 'val y">[0-9.]*'
 ```
 
 **Pass criteria:** DB Time กลับมาสูงหลัง 30 วินาที
@@ -214,7 +214,7 @@ php84-hpa   Deployment/php84   cpu: X%/50%   2        8        2
 
 **วิธีที่ 1: ผ่าน K8s Console**
 
-เปิด https://laravel.localhost:30443/k8s แล้วกด **🔥 Laravel Load (20 req)**
+เปิด https://laravel.localhost:666/k8s แล้วกด **🔥 Laravel Load (20 req)**
 
 สังเกต:
 - CPU bar ขึ้น
@@ -228,7 +228,7 @@ php84-hpa   Deployment/php84   cpu: X%/50%   2        8        2
 ```bash
 # ยิง 20 parallel requests พร้อมกัน
 for i in $(seq 1 20); do
-  curl -sk "https://laravel.localhost:30443/?loops=1000000" -o /dev/null &
+  curl -sk "https://laravel.localhost:666/?loops=1000000" -o /dev/null &
 done
 wait
 
@@ -306,7 +306,7 @@ kubectl delete pod -n oway $(kubectl get pods -n oway -l app=php84 -o jsonpath='
 **Terminal 1: ยิง requests ต่อเนื่อง**
 ```bash
 while true; do
-  STATUS=$(curl -sk -o /dev/null -w "%{http_code}" https://laravel.localhost:30443)
+  STATUS=$(curl -sk -o /dev/null -w "%{http_code}" https://laravel.localhost:666)
   echo "$(date +%H:%M:%S) HTTP $STATUS"
   sleep 0.5
 done
@@ -341,7 +341,7 @@ watch -n 1 kubectl get pods -n oway -l app=mysql
 **Terminal 1: ยิง requests ต่อเนื่อง**
 ```bash
 while true; do
-  curl -sk -o /dev/null -w "%{http_code} " https://laravel.localhost:30443
+  curl -sk -o /dev/null -w "%{http_code} " https://laravel.localhost:666
   sleep 0.3
 done
 ```
@@ -418,7 +418,7 @@ Requests:
 
 ```bash
 # ยิง CPU-heavy request แล้วดู throttle
-curl -sk "https://laravel.localhost:30443/?loops=5000000" -o /dev/null &
+curl -sk "https://laravel.localhost:666/?loops=5000000" -o /dev/null &
 sleep 2
 kubectl top pods -n oway -l app=php84
 ```
@@ -431,12 +431,12 @@ kubectl top pods -n oway -l app=php84
 
 **Concept:** ดู cluster state แบบ realtime ผ่านหน้าเว็บ โดยใช้ K8s API in-cluster
 
-**URL:** https://laravel.localhost:30443/k8s
+**URL:** https://laravel.localhost:666/k8s
 
 ### Test 7.1 — API Endpoint
 
 ```bash
-curl -sk https://laravel.localhost:30443/k8s/api | python3 -m json.tool | head -30
+curl -sk https://laravel.localhost:666/k8s/api | python3 -m json.tool | head -30
 ```
 
 **Expected:** JSON มี keys: `pods`, `hpas`, `deployments`, `ts`, `hostname`
@@ -445,7 +445,7 @@ curl -sk https://laravel.localhost:30443/k8s/api | python3 -m json.tool | head -
 
 ### Test 7.2 — Console แสดงข้อมูลถูกต้อง
 
-เปิด https://laravel.localhost:30443/k8s แล้วตรวจ:
+เปิด https://laravel.localhost:666/k8s แล้วตรวจ:
 
 - [ ] HPA cards แสดง php84-hpa และ php74-hpa
 - [ ] Pods table แสดง pods ทั้งหมดใน namespace oway

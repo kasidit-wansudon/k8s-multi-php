@@ -55,8 +55,8 @@ echo "✅ Done! รีเฟรช browser ได้เลย"
 
 if [ "$RUNTIME" = "k3s" ]; then
   SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
-  echo "   https://$SERVER_IP:30443  (Host: zend2.localhost / laravel.localhost)"
+  echo "   https://$SERVER_IP:666  (Host: zend2.localhost / laravel.localhost)"
 else
-  echo "   https://zend2.localhost:30443"
-  echo "   https://laravel.localhost:30443"
+  echo "   https://zend2.localhost:666"
+  echo "   https://laravel.localhost:666"
 fi

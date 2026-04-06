@@ -22,7 +22,7 @@ spec:
           image: phpmyadmin:latest
           imagePullPolicy: IfNotPresent  # ← ใช้ image ที่ load เข้า node แล้ว ไม่ pull จาก Docker Hub
           ports:
-            - containerPort: 664
+            - containerPort: 667
           env:
             - name: PMA_HOST
               value: "mysql"           # ชี้ไป MySQL Service
@@ -34,7 +34,7 @@ spec:
                   name: mysql-secret
                   key: MYSQL_PASSWORD
             - name: APACHE_PORT       # ← แก้ปัญหา K8s inject PHPMYADMIN_PORT=tcp://... ทำให้ Apache พัง
-              value: "664"
+              value: "667"
 
 ---
 apiVersion: v1
@@ -46,7 +46,7 @@ spec:
   selector:
     app: phpmyadmin
   ports:
-    - port: 664
-      targetPort: 664
-      nodePort: 664                # ★ เปิด http://localhost:664
+    - port: 667
+      targetPort: 667
+      nodePort: 667                # ★ เปิด http://localhost:667
   type: NodePort

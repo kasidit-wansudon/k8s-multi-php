@@ -13,7 +13,7 @@
 │  Namespace: oway                                                         │
 │                                                                          │
 │  ┌────────────────┐                                                      │
-│  │    Apache 2.4   │  HTTPS :30443  /  HTTP :30080                       │
+│  │    Apache 2.4   │  HTTPS :666  /  HTTP :665                       │
 │  │  reverse proxy  │  mkcert TLS (browser trusted)                       │
 │  │  + SSL/TLS      │                                                     │
 │  └───────┬────────┘                                                      │
@@ -47,7 +47,7 @@
 │                                                                          │
 │  ┌──────────────┐  ┌────────────────┐  ┌──────────────┐                 │
 │  │  phpMyAdmin   │  │ metrics-server │  │  HPA x2      │                 │
-│  │  :30888       │  │ (CPU metrics)  │  │  (autoscale) │                 │
+│  │  :667       │  │ (CPU metrics)  │  │  (autoscale) │                 │
 │  └──────────────┘  └────────────────┘  └──────────────┘                 │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
@@ -100,11 +100,11 @@ Step 10  Port-forward สำหรับ browser access
 
 | Service | URL | รายละเอียด |
 |---------|-----|-----------|
-| Laravel SQL Benchmark | https://laravel.localhost:30443 | 6 complex queries + Redis cache + CPU benchmark |
-| Laminas + Doctrine Benchmark | https://zend2.localhost:30443 | Doctrine ORM (QueryBuilder / DQL / NativeQuery) |
-| K8s Auto-Scale Console | https://laravel.localhost:30443/k8s | Realtime dashboard: pods, HPA, CPU metrics, load test |
-| K8s API (JSON) | https://laravel.localhost:30443/k8s/api | REST API สำหรับ cluster state |
-| phpMyAdmin | http://localhost:9888 | Database management UI |
+| Laravel SQL Benchmark | https://laravel.localhost:666 | 6 complex queries + Redis cache + CPU benchmark |
+| Laminas + Doctrine Benchmark | https://zend2.localhost:666 | Doctrine ORM (QueryBuilder / DQL / NativeQuery) |
+| K8s Auto-Scale Console | https://laravel.localhost:666/k8s | Realtime dashboard: pods, HPA, CPU metrics, load test |
+| K8s API (JSON) | https://laravel.localhost:666/k8s/api | REST API สำหรับ cluster state |
+| phpMyAdmin | http://localhost:667 | Database management UI |
 
 ---
 
@@ -204,7 +204,7 @@ kubectl rollout undo deployment/php84 -n oway
 
 ## K8s Console (Realtime Dashboard)
 
-เปิด https://laravel.localhost:30443/k8s เพื่อดู:
+เปิด https://laravel.localhost:666/k8s เพื่อดู:
 
 - **Pod Status** — ชื่อ, สถานะ, CPU/Memory usage แบบ realtime
 - **HPA Cards** — current/desired replicas, CPU utilization bar
@@ -274,12 +274,12 @@ k8s-multi-php/
 | **Deployment** | `mysql` | 1 replica, MariaDB 10.11 |
 | **Deployment** | `redis` | 1 replica, Redis 7.2 |
 | **Deployment** | `phpmyadmin` | 1 replica |
-| **Service** | `apache` | NodePort 30080/30443 |
+| **Service** | `apache` | NodePort 665/666 |
 | **Service** | `php84` | ClusterIP :9000 |
 | **Service** | `php74` | ClusterIP :9000 |
 | **Service** | `mysql` | ClusterIP :3306 |
 | **Service** | `redis` | ClusterIP :6379 |
-| **Service** | `phpmyadmin` | NodePort 30888 |
+| **Service** | `phpmyadmin` | NodePort 667 |
 | **HPA** | `php84-hpa` | CPU 50%, 2-8 pods |
 | **HPA** | `php74-hpa` | CPU 50%, 1-6 pods |
 | **PVC** | `mysql-pvc` | 1Gi ReadWriteOnce |
@@ -297,10 +297,10 @@ k8s-multi-php/
 ```
 External (Browser)
        │
-       ├── :30443 HTTPS ──► Apache ──┬── laravel.localhost ──► php84:9000 (Laravel)
+       ├── :666 HTTPS ──► Apache ──┬── laravel.localhost ──► php84:9000 (Laravel)
        │                             └── zend2.localhost   ──► php74:9000 (Laminas)
        │
-       └── :9888  HTTP  ──► phpMyAdmin ──► mysql:3306
+       └── :667  HTTP  ──► phpMyAdmin ──► mysql:3306
 
 Internal (ClusterIP)
        php84/php74 ──► redis:6379   (cache hit <1ms)
@@ -318,7 +318,7 @@ Internal (ClusterIP)
 | `docker-compose.yml` | หลายไฟล์ `.yaml` | `base/*.yaml` |
 | `services:` | Deployment + Service | `php84.yaml`, `apache.yaml` |
 | `image:` | `spec.containers[].image` | ใน Deployment YAML |
-| `ports:` | Service (NodePort/ClusterIP) | `apache.yaml` (30443) |
+| `ports:` | Service (NodePort/ClusterIP) | `apache.yaml` (666) |
 | `volumes:` | PersistentVolumeClaim | `mysql.yaml` (1Gi PVC) |
 | `environment:` | ConfigMap / Secret | `app-env-configmap.yaml` |
 | `docker-compose up` | `./deploy.sh` | deploy.sh |
@@ -479,8 +479,8 @@ rm certs/oway-tls.*
 
 ```bash
 pkill -f 'kubectl port-forward'
-kubectl port-forward svc/apache 30080:80 30443:443 -n oway &
-kubectl port-forward svc/phpmyadmin 9888:80 -n oway &
+kubectl port-forward svc/apache 665:665 666:666 -n oway &
+kubectl port-forward svc/phpmyadmin 667:667 -n oway &
 ```
 
 ### Code ไม่อัปเดตหลังแก้ไฟล์
