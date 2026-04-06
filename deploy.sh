@@ -68,7 +68,7 @@ echo "📦 Checking PHP frameworks..."
 if [ ! -f "$SCRIPT_DIR/apps/zend2/vendor/autoload.php" ]; then
   echo "   ⏳ Installing Laminas MVC Skeleton (อาจใช้เวลาสักครู่)..."
   TMPDIR_ZEND=$(mktemp -d)
-  docker run --rm \
+  docker run --rm --network=host \
     -v "$TMPDIR_ZEND":/app \
     -u "$(id -u):$(id -g)" \
     composer:latest \
@@ -85,7 +85,7 @@ fi
 if [ ! -f "$SCRIPT_DIR/apps/laravel/vendor/autoload.php" ]; then
   echo "   ⏳ Installing Laravel (อาจใช้เวลาสักครู่)..."
   TMPDIR_LARAVEL=$(mktemp -d)
-  docker run --rm \
+  docker run --rm --network=host \
     -v "$TMPDIR_LARAVEL":/app \
     -u "$(id -u):$(id -g)" \
     composer:latest \

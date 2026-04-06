@@ -86,6 +86,23 @@ if [ -x /usr/local/bin/k3s ]; then
       echo "   ✅ K3s config already correct"
     fi
   fi
+
+  # ตรวจว่า K3s service รันอยู่จริง
+  if ! systemctl is-active --quiet k3s; then
+    echo "   ⚠️  K3s service ไม่ทำงาน — กำลังเริ่ม..."
+    systemctl start k3s
+    sleep 10
+  fi
+
+  # รอจน K3s พร้อม
+  echo "   ⏳ Waiting for K3s to be ready..."
+  for i in $(seq 1 30); do
+    if /usr/local/bin/k3s kubectl get nodes 2>/dev/null | grep -q "Ready"; then
+      echo "   ✅ K3s is running and ready"
+      break
+    fi
+    sleep 2
+  done
 else
   # ติดตั้ง K3s พร้อม Docker backend
   # --docker: ใช้ Docker แทน containerd (เพราะเราใช้ docker build อยู่แล้ว)
