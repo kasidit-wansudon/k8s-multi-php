@@ -7,8 +7,12 @@
 
 set -e
 
+# ─── ตั้งค่า Port ─────────────────────────────────────
+K3S_PORT="${K3S_PORT:-661}"
+
 echo "═══════════════════════════════════════════════════"
 echo "  K3s Setup สำหรับ OWAY K8s Multi-PHP Lab"
+echo "  Port: $K3S_PORT"
 echo "═══════════════════════════════════════════════════"
 echo ""
 
@@ -52,16 +56,42 @@ fi
 echo ""
 
 # ─── 2. ติดตั้ง K3s ────────────────────────────────
-echo "☸️  Installing K3s..."
+echo "☸️  Installing K3s (port: $K3S_PORT)..."
 
 if command -v k3s &>/dev/null; then
   echo "   ✅ K3s already installed ($(k3s --version | head -1))"
+
+  # ตรวจสอบว่า K3s มี --service-node-port-range และ --https-listen-port ถูกต้องหรือไม่
+  K3S_SERVICE_FILE="/etc/systemd/system/k3s.service"
+  NEED_RESTART=false
+
+  if [ -f "$K3S_SERVICE_FILE" ]; then
+    if ! grep -q "service-node-port-range=660-670" "$K3S_SERVICE_FILE"; then
+      echo "   ⚙️  เพิ่ม --service-node-port-range=660-670 ใน K3s config..."
+      sed -i "s|server|server --service-node-port-range=660-670|" "$K3S_SERVICE_FILE"
+      NEED_RESTART=true
+    fi
+    if ! grep -q "https-listen-port=$K3S_PORT" "$K3S_SERVICE_FILE"; then
+      echo "   ⚙️  เพิ่ม --https-listen-port=$K3S_PORT ใน K3s config..."
+      sed -i "s|server|server --https-listen-port=$K3S_PORT|" "$K3S_SERVICE_FILE"
+      NEED_RESTART=true
+    fi
+    if [ "$NEED_RESTART" = true ]; then
+      echo "   🔄 Restarting K3s..."
+      systemctl daemon-reload
+      systemctl restart k3s
+      sleep 10
+      echo "   ✅ K3s restarted with new config"
+    else
+      echo "   ✅ K3s config already correct"
+    fi
+  fi
 else
   # ติดตั้ง K3s พร้อม Docker backend
   # --docker: ใช้ Docker แทน containerd (เพราะเราใช้ docker build อยู่แล้ว)
   # --disable=traefik: ไม่ต้องใช้ traefik (เราใช้ Apache เอง)
   # --write-kubeconfig-mode=644: ให้ user ทั่วไปอ่าน kubeconfig ได้
-  curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--docker --disable=traefik --write-kubeconfig-mode=644" sh -
+  curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--docker --disable=traefik --write-kubeconfig-mode=644 --https-listen-port=$K3S_PORT --service-node-port-range=660-670" sh -
 
   echo "   ⏳ Waiting for K3s to be ready..."
   sleep 10
@@ -93,6 +123,8 @@ REAL_HOME=$(eval echo "~$REAL_USER")
 
 mkdir -p "$REAL_HOME/.kube"
 cp /etc/rancher/k3s/k3s.yaml "$REAL_HOME/.kube/config"
+# ปรับ port ใน kubeconfig ให้ตรงกับที่กำหนด
+sed -i "s|https://127.0.0.1:6443|https://127.0.0.1:$K3S_PORT|g" "$REAL_HOME/.kube/config"
 chown "$REAL_USER:$(id -g "$REAL_USER")" "$REAL_HOME/.kube/config"
 chmod 600 "$REAL_HOME/.kube/config"
 
@@ -138,6 +170,8 @@ echo ""
 echo "═══════════════════════════════════════════════════"
 echo "  ✅ Setup เสร็จสมบูรณ์!"
 echo "═══════════════════════════════════════════════════"
+echo ""
+echo "  K3s API Port: $K3S_PORT"
 echo ""
 echo "  ขั้นตอนถัดไป:"
 echo "  1. logout แล้ว login ใหม่ (เพื่อให้ docker group มีผล)"
