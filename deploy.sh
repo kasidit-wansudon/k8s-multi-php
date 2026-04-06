@@ -67,11 +67,15 @@ echo "📦 Checking PHP frameworks..."
 # Laminas MVC
 if [ ! -f "$SCRIPT_DIR/apps/zend2/vendor/autoload.php" ]; then
   echo "   ⏳ Installing Laminas MVC Skeleton (อาจใช้เวลาสักครู่)..."
+  TMPDIR_ZEND=$(mktemp -d)
   docker run --rm \
-    -v "$SCRIPT_DIR/apps/zend2":/app \
+    -v "$TMPDIR_ZEND":/app \
     -u "$(id -u):$(id -g)" \
     composer:latest \
     create-project laminas/laminas-mvc-skeleton . --no-interaction --ignore-platform-req=php
+  # copy ทับ แต่เก็บไฟล์เดิม (Dockerfile ฯลฯ) ไว้
+  cp -rn "$TMPDIR_ZEND"/. "$SCRIPT_DIR/apps/zend2/"
+  rm -rf "$TMPDIR_ZEND"
   echo "   ✅ Laminas MVC installed"
 else
   echo "   ✅ Laminas MVC — already installed (skipping)"
@@ -80,11 +84,14 @@ fi
 # Laravel
 if [ ! -f "$SCRIPT_DIR/apps/laravel/vendor/autoload.php" ]; then
   echo "   ⏳ Installing Laravel (อาจใช้เวลาสักครู่)..."
+  TMPDIR_LARAVEL=$(mktemp -d)
   docker run --rm \
-    -v "$SCRIPT_DIR/apps/laravel":/app \
+    -v "$TMPDIR_LARAVEL":/app \
     -u "$(id -u):$(id -g)" \
     composer:latest \
     create-project laravel/laravel . --no-interaction
+  cp -rn "$TMPDIR_LARAVEL"/. "$SCRIPT_DIR/apps/laravel/"
+  rm -rf "$TMPDIR_LARAVEL"
   echo "   ✅ Laravel installed"
 else
   echo "   ✅ Laravel — already installed (skipping)"

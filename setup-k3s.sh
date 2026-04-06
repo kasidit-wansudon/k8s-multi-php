@@ -58,8 +58,8 @@ echo ""
 # ─── 2. ติดตั้ง K3s ────────────────────────────────
 echo "☸️  Installing K3s (port: $K3S_PORT)..."
 
-if command -v k3s &>/dev/null; then
-  echo "   ✅ K3s already installed ($(k3s --version | head -1))"
+if [ -x /usr/local/bin/k3s ]; then
+  echo "   ✅ K3s already installed ($(/usr/local/bin/k3s --version | head -1))"
 
   # ตรวจสอบว่า K3s มี --service-node-port-range และ --https-listen-port ถูกต้องหรือไม่
   K3S_SERVICE_FILE="/etc/systemd/system/k3s.service"
@@ -98,7 +98,7 @@ else
 
   # รอจนกว่า K3s node จะ Ready
   for i in $(seq 1 30); do
-    if k3s kubectl get nodes 2>/dev/null | grep -q "Ready"; then
+    if /usr/local/bin/k3s kubectl get nodes 2>/dev/null | grep -q "Ready"; then
       break
     fi
     sleep 2
@@ -151,15 +151,15 @@ echo "🔍 Verifying setup..."
 echo ""
 
 echo "   Node status:"
-k3s kubectl get nodes
+/usr/local/bin/k3s kubectl get nodes
 echo ""
 
 echo "   System pods:"
-k3s kubectl get pods -n kube-system
+/usr/local/bin/k3s kubectl get pods -n kube-system
 echo ""
 
 # ตรวจ metrics-server (K3s มีในตัว)
-METRICS=$( k3s kubectl get pods -n kube-system 2>/dev/null | grep metrics-server | wc -l)
+METRICS=$( /usr/local/bin/k3s kubectl get pods -n kube-system 2>/dev/null | grep metrics-server | wc -l)
 if [ "$METRICS" -ge 1 ]; then
   echo "   ✅ metrics-server is running (HPA จะทำงานได้)"
 else
@@ -182,7 +182,7 @@ echo "  คำสั่งที่มีประโยชน์:"
 echo "  - kubectl get nodes        # ดู node status"
 echo "  - kubectl get pods -A      # ดู pods ทั้งหมด"
 echo "  - systemctl status k3s     # ดู K3s service status"
-echo "  - k3s kubectl top nodes    # ดู resource usage"
+echo "  - /usr/local/bin/k3s kubectl top nodes    # ดู resource usage"
 echo ""
 echo "  ❗ ถ้าต้องการ uninstall K3s:"
 echo "  - /usr/local/bin/k3s-uninstall.sh"
