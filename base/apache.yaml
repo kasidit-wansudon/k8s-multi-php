@@ -25,8 +25,8 @@ spec:
           image: httpd:2.4
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 80
-            - containerPort: 443
+            - containerPort: 662
+            - containerPort: 663
           volumeMounts:
             - name: httpd-conf
               mountPath: /usr/local/apache2/conf/httpd.conf
@@ -93,11 +93,11 @@ spec:
     app: apache
   ports:
     - name: http
-      port: 80
-      targetPort: 80
-      nodePort: 30080
+      port: 662
+      targetPort: 662
+      nodePort: 662
     - name: https
-      port: 443
-      targetPort: 443
-      nodePort: 30443
+      port: 663
+      targetPort: 663
+      nodePort: 663
   type: NodePort
