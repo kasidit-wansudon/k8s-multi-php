@@ -246,6 +246,22 @@ echo ""
 # ─────────────────────────────────────────────────────
 # STEP 7: Deploy resources ตามลำดับ
 # ─────────────────────────────────────────────────────
+
+# ตรวจว่า K3s ยังรันอยู่ก่อน apply (อาจตายระหว่าง pull/build)
+if [ "$RUNTIME" = "k3s" ]; then
+  if ! $KUBECTL get nodes &>/dev/null; then
+    echo "⚠️  K3s API ไม่ตอบ — กำลัง restart..."
+    sudo systemctl restart k3s
+    for i in $(seq 1 30); do
+      if $KUBECTL get nodes &>/dev/null; then
+        echo "   ✅ K3s API ready"
+        break
+      fi
+      sleep 2
+    done
+  fi
+fi
+
 echo "📋 Applying Kubernetes resources..."
 
 $KUBECTL apply -f "$TMPDIR_YAML/namespace.yaml"
