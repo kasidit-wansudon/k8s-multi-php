@@ -10,9 +10,11 @@ metadata:
 data:
   TZ: "Asia/Bangkok"
   APP_TIMEZONE: "Asia/Bangkok"
+  DB_CONNECTION: "mysql"
   DB_HOST: "mysql"
   DB_PORT: "3306"
   DB_DATABASE: "mex_sellin"
+  SESSION_DRIVER: "file"
   REDIS_HOST: "redis"
   REDIS_PORT: "6379"
   CACHE_TTL: "30"

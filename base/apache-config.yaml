@@ -39,6 +39,7 @@ data:
     # HTTP → redirect to HTTPS
     <VirtualHost *:665>
         ServerName zend2.localhost
+        ServerAlias zend2.172.31.7.223.nip.io
         RewriteEngine On
         RewriteRule ^(.*)$ https://zend2.localhost:666$1 [R=301,L]
     </VirtualHost>
@@ -46,6 +47,7 @@ data:
     # HTTPS
     <VirtualHost *:666>
         ServerName zend2.localhost
+        ServerAlias zend2.172.31.7.223.nip.io
         DocumentRoot /var/www/zend2/public
         SSLEngine on
         SSLCertificateFile    /etc/ssl/oway/tls.crt
@@ -64,6 +66,7 @@ data:
     # HTTP → redirect to HTTPS
     <VirtualHost *:665>
         ServerName laravel.localhost
+        ServerAlias laravel.172.31.7.223.nip.io
         RewriteEngine On
         RewriteRule ^(.*)$ https://laravel.localhost:666$1 [R=301,L]
     </VirtualHost>
@@ -71,6 +74,7 @@ data:
     # HTTPS
     <VirtualHost *:666>
         ServerName laravel.localhost
+        ServerAlias laravel.172.31.7.223.nip.io
         DocumentRoot /var/www/laravel/public
         SSLEngine on
         SSLCertificateFile    /etc/ssl/oway/tls.crt
