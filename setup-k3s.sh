@@ -61,18 +61,25 @@ echo "☸️  Installing K3s (port: $K3S_PORT)..."
 if [ -x /usr/local/bin/k3s ]; then
   echo "   ✅ K3s already installed ($(/usr/local/bin/k3s --version | head -1))"
 
-  # ตรวจสอบว่า K3s มี --service-node-port-range และ --https-listen-port ถูกต้องหรือไม่
+  # ตรวจสอบ K3s config — ต้องมี --service-node-port-range และ --https-listen-port
+  # และต้องไม่มี --docker (ทำให้ K3s ไม่เสถียร ใช้ containerd default แทน)
   K3S_SERVICE_FILE="/etc/systemd/system/k3s.service"
   NEED_RESTART=false
 
   if [ -f "$K3S_SERVICE_FILE" ]; then
+    # เอา --docker ออก (ทำให้ K3s crash บ่อย)
+    if grep -q "'--docker'" "$K3S_SERVICE_FILE"; then
+      echo "   ⚙️  เอา --docker ออก (เปลี่ยนเป็น containerd)..."
+      sed -i "/'--docker'/d" "$K3S_SERVICE_FILE"
+      NEED_RESTART=true
+    fi
     if ! grep -q "service-node-port-range=660-670" "$K3S_SERVICE_FILE"; then
-      echo "   ⚙️  เพิ่ม --service-node-port-range=660-670 ใน K3s config..."
+      echo "   ⚙️  เพิ่ม --service-node-port-range=660-670..."
       sed -i "s|server|server --service-node-port-range=660-670|" "$K3S_SERVICE_FILE"
       NEED_RESTART=true
     fi
     if ! grep -q "https-listen-port=$K3S_PORT" "$K3S_SERVICE_FILE"; then
-      echo "   ⚙️  เพิ่ม --https-listen-port=$K3S_PORT ใน K3s config..."
+      echo "   ⚙️  เพิ่ม --https-listen-port=$K3S_PORT..."
       sed -i "s|server|server --https-listen-port=$K3S_PORT|" "$K3S_SERVICE_FILE"
       NEED_RESTART=true
     fi
@@ -104,11 +111,10 @@ if [ -x /usr/local/bin/k3s ]; then
     sleep 2
   done
 else
-  # ติดตั้ง K3s พร้อม Docker backend
-  # --docker: ใช้ Docker แทน containerd (เพราะเราใช้ docker build อยู่แล้ว)
+  # ติดตั้ง K3s (containerd default — เสถียรกว่า --docker)
   # --disable=traefik: ไม่ต้องใช้ traefik (เราใช้ Apache เอง)
   # --write-kubeconfig-mode=644: ให้ user ทั่วไปอ่าน kubeconfig ได้
-  curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--docker --disable=traefik --write-kubeconfig-mode=644 --https-listen-port=$K3S_PORT --service-node-port-range=660-670" sh -
+  curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable=traefik --write-kubeconfig-mode=644 --https-listen-port=$K3S_PORT --service-node-port-range=660-670" sh -
 
   echo "   ⏳ Waiting for K3s to be ready..."
   sleep 10
