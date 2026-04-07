@@ -8,13 +8,19 @@
 ## Architecture
 
 ```
-                        Kubernetes Cluster (Docker Desktop)
+  Browser
+     │
+     ├─ http://zend2.<SERVER_IP>.nip.io   ─┐
+     ├─ http://laravel.<SERVER_IP>.nip.io ─┼─► Host Apache :80
+     └─ http://pma.<SERVER_IP>.nip.io     ─┘       │ reverse proxy
+                                                   ▼
+                        K3s Cluster (containerd, NodePort 665-667)
 ┌──────────────────────────────────────────────────────────────────────────┐
 │  Namespace: oway                                                         │
 │                                                                          │
 │  ┌────────────────┐                                                      │
-│  │    Apache 2.4   │  HTTPS :666  /  HTTP :665                       │
-│  │  reverse proxy  │  mkcert TLS (browser trusted)                       │
+│  │    Apache 2.4   │  HTTP :665  /  HTTPS :666                           │
+│  │  reverse proxy  │  self-signed TLS (dev/lab)                          │
 │  │  + SSL/TLS      │                                                     │
 │  └───────┬────────┘                                                      │
 │          │                                                               │
@@ -56,55 +62,103 @@
 
 ## Prerequisites
 
-| Tool | Version | วิธีติดตั้ง |
-|------|---------|------------|
-| Docker Desktop | Latest | [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop) |
-| Kubernetes | Enabled in Docker Desktop | Settings > Kubernetes > Enable |
-| kubectl | Latest | มากับ Docker Desktop |
-| mkcert | Latest | `brew install mkcert && mkcert -install` |
-| metrics-server | Running in cluster | มากับ Docker Desktop K8s |
+โปรเจกต์รองรับ **2 environments**:
+
+### Linux server (K3s) — แนะนำสำหรับ production/staging
+| Tool | วิธีติดตั้ง |
+|------|------------|
+| Linux (RHEL 8+ / Amazon Linux / Debian) | — |
+| Docker | `curl -fsSL https://get.docker.com \| sh` |
+| K3s | รัน `sudo ./setup-k3s.sh` (ติดตั้งอัตโนมัติ) |
+| Host Apache (optional) | ถ้ามีอยู่แล้ว → deploy.sh จะติดตั้ง reverse proxy ให้ |
+
+### macOS (Docker Desktop) — สำหรับ local dev
+| Tool | วิธีติดตั้ง |
+|------|------------|
+| Docker Desktop | [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop) |
+| Kubernetes | Settings > Kubernetes > Enable |
+| mkcert | `brew install mkcert && mkcert -install` |
 
 ---
 
 ## Quick Start
 
+### Linux server (K3s)
+
 ```bash
-# 1. Deploy ทั้งหมดด้วยคำสั่งเดียว (build images + apply manifests + port-forward)
+# 1. ติดตั้ง K3s + Docker (ครั้งแรก)
+sudo ./setup-k3s.sh
+
+# 2. Deploy ทั้งหมดด้วยคำสั่งเดียว
 ./deploy.sh
 
-# 2. รัน test suite ตรวจสอบทุกอย่าง (40+ assertions)
+# 3. รัน test suite
 ./test.sh
+```
 
-# 3. Sync code หลังแก้ไฟล์ (ไม่ต้อง redeploy)
-./sync-code.sh
+### macOS (Docker Desktop)
+
+```bash
+# 1. เปิด Docker Desktop + enable Kubernetes
+# 2. Deploy
+./deploy.sh
+
+# 3. รัน test suite
+./test.sh
+```
+
+### Sync code หลังแก้ไฟล์ (ทั้ง 2 environment)
+
+```bash
+./sync-code.sh    # sync code เข้า K8s โดยไม่ต้อง redeploy
 ```
 
 ### deploy.sh ทำอะไรบ้าง?
 
 ```
-Step 1   ตรวจหา K8s nodes (Docker Desktop)
-Step 2   ติดตั้ง Laravel + Laminas ผ่าน Composer (ถ้ายังไม่มี)
-Step 3   Build custom Docker images (oway-php83, oway-php84)
-Step 4   Load images เข้าทุก K8s node
-Step 5   Sync app code เข้า node containers
-Step 6   แทนค่า hostPath ใน YAML
-Step 7   สร้าง TLS certificate ด้วย mkcert
-Step 8   Apply K8s manifests ตามลำดับ
-Step 9   รอ pods พร้อม (timeout 180s)
-Step 10  Port-forward สำหรับ browser access
+Step 0   ตรวจจับ runtime (K3s / Docker Desktop)
+Step 1   ติดตั้ง Laravel + Laminas + composer update (sync vendor)
+Step 2   Build Docker images ด้วย --network=host (oway-php83/84)
+Step 3   Import images เข้า K3s containerd (หรือ Docker Desktop nodes)
+Step 4   Rsync app code → /apps/ (hostPath)
+Step 5   สร้าง TLS cert (mkcert หรือ openssl)
+Step 6   Apply K8s manifests (namespace, secrets, configmap, deployments, HPA)
+Step 7   รอ pods พร้อม (timeout 180s)
+Step 8   Start port-forward / NodePort
+Step 9   Install host Apache reverse proxy (K3s only)
+Step 10  แสดง URL สรุป (nip.io + NodePort)
 ```
 
 ---
 
 ## Access URLs
 
+### Linux (K3s) — เข้าผ่าน Host Apache + nip.io
+
+แทน `<IP>` ด้วย IP ของ server (เช่น `172.31.7.223`)
+
 | Service | URL | รายละเอียด |
 |---------|-----|-----------|
-| Laravel SQL Benchmark | https://laravel.localhost:666 | 6 complex queries + Redis cache + CPU benchmark |
-| Laminas + Doctrine Benchmark | https://zend2.localhost:666 | Doctrine ORM (QueryBuilder / DQL / NativeQuery) |
-| K8s Auto-Scale Console | https://laravel.localhost:666/k8s | Realtime dashboard: pods, HPA, CPU metrics, load test |
-| K8s API (JSON) | https://laravel.localhost:666/k8s/api | REST API สำหรับ cluster state |
-| phpMyAdmin | http://localhost:667 | Database management UI |
+| Laravel SQL Benchmark | http://laravel.`<IP>`.nip.io | 6 complex queries + Redis cache |
+| Laminas + Doctrine | http://zend2.`<IP>`.nip.io | Doctrine ORM (QueryBuilder / DQL) |
+| K8s Auto-Scale Console | http://laravel.`<IP>`.nip.io/k8s | Realtime dashboard + load test |
+| K8s API (JSON) | http://laravel.`<IP>`.nip.io/k8s/api | REST API สำหรับ cluster state |
+| phpMyAdmin | http://pma.`<IP>`.nip.io | Database management |
+
+**หรือเข้า NodePort ตรง** (ถ้าไม่ได้ติดตั้ง host Apache proxy):
+- https://`<IP>`:666 (Host header: `zend2.localhost` / `laravel.localhost`)
+- http://`<IP>`:667 (phpMyAdmin)
+
+> ℹ️ **nip.io** คือ wildcard DNS service — `*.IP.nip.io` resolve เป็น `IP` อัตโนมัติ ไม่ต้องแก้ `/etc/hosts`
+
+### macOS (Docker Desktop)
+
+| Service | URL |
+|---------|-----|
+| Laravel | https://laravel.localhost:666 |
+| Laminas | https://zend2.localhost:666 |
+| K8s Console | https://laravel.localhost:666/k8s |
+| phpMyAdmin | http://localhost:667 |
 
 ---
 
@@ -414,8 +468,8 @@ pkill -f 'kubectl port-forward'                # หยุด port-forward
 
 | Component | Technology | Version |
 |-----------|-----------|---------|
-| Container Runtime | Docker Desktop | Latest |
-| Orchestration | Kubernetes | Docker Desktop built-in |
+| Orchestration | K3s (Linux) / Docker Desktop (macOS) | Latest |
+| Container Runtime | containerd (K3s) / Docker (Desktop) | Latest |
 | PHP (Laravel) | PHP-FPM | 8.4 |
 | PHP (Laminas) | PHP-FPM | 8.3 |
 | Framework | Laravel | 13.x |
@@ -436,11 +490,14 @@ pkill -f 'kubectl port-forward'                # หยุด port-forward
 
 | Variable | Value | Description |
 |----------|-------|-------------|
-| `TZ` | `Asia/Bangkok` | System timezone |
-| `APP_TIMEZONE` | `Asia/Bangkok` | Application timezone |
+| `TZ` / `APP_TIMEZONE` | `Asia/Bangkok` | System/app timezone |
+| `DB_CONNECTION` | `mysql` | Framework DB driver |
 | `DB_HOST` | `mysql` | MariaDB service name (K8s DNS) |
 | `DB_PORT` | `3306` | MariaDB port |
 | `DB_DATABASE` | `mex_sellin` | Database name |
+| `DB_USERNAME` / `DB_PASSWORD` | `oway` / `oway_secret` | จาก `mysql-secret` |
+| `SESSION_DRIVER` | `file` | Session storage (หลีกเลี่ยง DB sessions) |
+| `CACHE_STORE` / `CACHE_DRIVER` | `redis` | Cache backend |
 | `REDIS_HOST` | `redis` | Redis service name (K8s DNS) |
 | `REDIS_PORT` | `6379` | Redis port |
 | `CACHE_TTL` | `30` | Query cache lifetime (seconds) |
@@ -475,12 +532,43 @@ rm certs/oway-tls.*
 ./deploy.sh    # จะสร้างใหม่อัตโนมัติ
 ```
 
-### Port-forward หลุด
+### Port-forward หลุด (Docker Desktop เท่านั้น — K3s ใช้ NodePort)
 
 ```bash
 pkill -f 'kubectl port-forward'
 kubectl port-forward svc/apache 665:665 666:666 -n oway &
 kubectl port-forward svc/phpmyadmin 667:667 -n oway &
+```
+
+### K3s: Host Apache reverse proxy ไม่ทำงาน
+
+```bash
+# ตรวจว่า config ถูก install
+ls /etc/httpd/conf.d/k8s-proxy.conf
+
+# Test syntax + reload
+sudo httpd -t
+sudo systemctl reload httpd
+
+# ดู vhost ที่ Apache โหลด
+sudo httpd -S 2>&1 | grep nip.io
+```
+
+### K3s: deploy ซ้ำแล้ว pod ใช้ code เก่า
+
+```bash
+# Sync code + restart pods
+./sync-code.sh
+kubectl rollout restart deployment/php74 -n oway
+kubectl rollout restart deployment/php84 -n oway
+```
+
+### ต้อง reset K3s ทั้งหมด (ถ้า K3s เสีย)
+
+```bash
+sudo /usr/local/bin/k3s-uninstall.sh
+sudo ./setup-k3s.sh
+./deploy.sh
 ```
 
 ### Code ไม่อัปเดตหลังแก้ไฟล์

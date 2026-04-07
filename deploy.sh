@@ -77,8 +77,21 @@ if [ ! -f "$SCRIPT_DIR/apps/zend2/vendor/autoload.php" ]; then
   cp -rn "$TMPDIR_ZEND"/. "$SCRIPT_DIR/apps/zend2/"
   rm -rf "$TMPDIR_ZEND"
   echo "   ✅ Laminas MVC installed"
+fi
+
+# ตรวจว่า vendor ตรงกับ composer.json (เช่น doctrine/orm) — ถ้าไม่ → composer update
+if [ -f "$SCRIPT_DIR/apps/zend2/composer.json" ] && \
+   grep -q '"doctrine/orm"' "$SCRIPT_DIR/apps/zend2/composer.json" && \
+   [ ! -f "$SCRIPT_DIR/apps/zend2/vendor/doctrine/orm/src/ORMSetup.php" ]; then
+  echo "   ⏳ Syncing Laminas vendor (composer update)..."
+  docker run --rm --network=host \
+    -v "$SCRIPT_DIR/apps/zend2":/app \
+    -u "$(id -u):$(id -g)" \
+    composer:latest \
+    update --ignore-platform-req=php --no-interaction
+  echo "   ✅ Laminas vendor synced"
 else
-  echo "   ✅ Laminas MVC — already installed (skipping)"
+  echo "   ✅ Laminas vendor — already in sync"
 fi
 
 # Laravel
@@ -296,6 +309,48 @@ sleep 2
 echo ""
 
 # ─────────────────────────────────────────────────────
+# STEP 9.5: Host Apache reverse proxy (K3s / Linux only)
+#   ให้เข้าผ่าน port 80 แทน 665/666/667
+# ─────────────────────────────────────────────────────
+if [ "$RUNTIME" = "k3s" ] && [ -f "$SCRIPT_DIR/host-apache/k8s-proxy.conf" ]; then
+  echo "🔀 Installing host Apache reverse proxy..."
+
+  # หา Apache config directory (RHEL/Debian)
+  APACHE_CONF_DIR=""
+  if [ -d /etc/httpd/conf.d ]; then
+    APACHE_CONF_DIR="/etc/httpd/conf.d"
+    APACHE_SVC="httpd"
+  elif [ -d /etc/apache2/conf-available ]; then
+    APACHE_CONF_DIR="/etc/apache2/conf-available"
+    APACHE_SVC="apache2"
+  fi
+
+  if [ -n "$APACHE_CONF_DIR" ] && systemctl is-active --quiet "$APACHE_SVC" 2>/dev/null; then
+    # แทน IP ใน config ให้ตรงกับ server ปัจจุบัน
+    SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+    TMP_CONF=$(mktemp)
+    sed "s|172.31.7.223|$SERVER_IP|g" "$SCRIPT_DIR/host-apache/k8s-proxy.conf" > "$TMP_CONF"
+    sudo cp "$TMP_CONF" "$APACHE_CONF_DIR/k8s-proxy.conf"
+    rm -f "$TMP_CONF"
+
+    # ถ้าเป็น Debian ต้อง enable ด้วย
+    if [ "$APACHE_SVC" = "apache2" ]; then
+      sudo a2enconf k8s-proxy &>/dev/null || true
+    fi
+
+    if sudo "$APACHE_SVC" -t 2>/dev/null || sudo apachectl -t 2>/dev/null; then
+      sudo systemctl reload "$APACHE_SVC"
+      echo "   ✅ Host Apache proxy installed → reload $APACHE_SVC"
+    else
+      echo "   ⚠️  Apache config syntax error — skipped reload"
+    fi
+  else
+    echo "   ℹ️  Host Apache not running — ข้าม step นี้"
+  fi
+  echo ""
+fi
+
+# ─────────────────────────────────────────────────────
 # STEP 10: สรุปผล
 # ─────────────────────────────────────────────────────
 
@@ -313,13 +368,16 @@ $KUBECTL get pods -n oway
 echo ""
 
 if [ "$RUNTIME" = "k3s" ]; then
+  echo "  ─── เข้าผ่าน Host Apache (port 80) — แนะนำ ───"
+  echo "  🌐 Laminas MVC   → http://zend2.${SERVER_IP}.nip.io"
+  echo "  🚀 Laravel       → http://laravel.${SERVER_IP}.nip.io"
+  echo "  📈 K8s Console   → http://laravel.${SERVER_IP}.nip.io/k8s"
+  echo "  📊 phpMyAdmin    → http://pma.${SERVER_IP}.nip.io"
+  echo ""
+  echo "  ─── หรือเข้า NodePort ตรง ───"
   echo "  🌐 Laminas MVC   → https://$SERVER_IP:666  (Host: zend2.localhost)"
   echo "  🚀 Laravel       → https://$SERVER_IP:666  (Host: laravel.localhost)"
-  echo "  📈 K8s Console   → https://$SERVER_IP:666/k8s"
   echo "  📊 phpMyAdmin    → http://$SERVER_IP:667"
-  echo ""
-  echo "  💡 เพิ่มใน /etc/hosts ของเครื่อง client:"
-  echo "     $SERVER_IP  zend2.localhost laravel.localhost"
   echo ""
   echo "  🔒 Self-signed cert — browser จะขึ้น warning (ปกติสำหรับ dev/lab)"
 else
