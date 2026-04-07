@@ -247,42 +247,54 @@ echo ""
 # STEP 7: Deploy resources ตามลำดับ
 # ─────────────────────────────────────────────────────
 
-# ตรวจว่า K3s ยังรันอยู่ก่อน apply (อาจตายระหว่าง pull/build)
-if [ "$RUNTIME" = "k3s" ]; then
-  if ! $KUBECTL get nodes &>/dev/null; then
-    echo "⚠️  K3s API ไม่ตอบ — กำลัง restart..."
+# Helper: kubectl apply ที่ retry + restart K3s ถ้าล้มเหลว
+k_apply() {
+  local file="$1"
+  local attempt=0
+  while [ $attempt -lt 3 ]; do
+    if $KUBECTL apply -f "$file" 2>/dev/null; then
+      return 0
+    fi
+    attempt=$((attempt + 1))
+    echo "   ⚠️  K3s API ไม่ตอบ — restart แล้วลองใหม่ ($attempt/3)..."
     sudo systemctl restart k3s
     for i in $(seq 1 30); do
-      if $KUBECTL get nodes &>/dev/null; then
-        echo "   ✅ K3s API ready"
-        break
-      fi
+      $KUBECTL get nodes &>/dev/null && break
       sleep 2
     done
-  fi
-fi
+  done
+  echo "   ❌ ไม่สามารถ apply $file ได้หลัง 3 ครั้ง"
+  return 1
+}
 
 echo "📋 Applying Kubernetes resources..."
 
-$KUBECTL apply -f "$TMPDIR_YAML/namespace.yaml"
+k_apply "$TMPDIR_YAML/namespace.yaml"
 
 $KUBECTL create secret tls oway-tls \
   --cert="$CERT_DIR/oway-tls.crt" \
   --key="$CERT_DIR/oway-tls.key" \
-  -n oway --dry-run=client -o yaml | $KUBECTL apply -f -
+  -n oway --dry-run=client -o yaml | $KUBECTL apply -f - 2>/dev/null || {
+    echo "   ⚠️  retry tls secret..."
+    sudo systemctl restart k3s && sleep 15
+    $KUBECTL create secret tls oway-tls \
+      --cert="$CERT_DIR/oway-tls.crt" \
+      --key="$CERT_DIR/oway-tls.key" \
+      -n oway --dry-run=client -o yaml | $KUBECTL apply -f -
+  }
 
-$KUBECTL apply -f "$TMPDIR_YAML/mysql-secret.yaml"
-$KUBECTL apply -f "$SCRIPT_DIR/base/app-env-configmap.yaml"
-$KUBECTL apply -f "$TMPDIR_YAML/mysql-init-configmap.yaml"
-$KUBECTL apply -f "$TMPDIR_YAML/app-code-configmap.yaml"
-$KUBECTL apply -f "$TMPDIR_YAML/apache-config.yaml"
-$KUBECTL apply -f "$TMPDIR_YAML/mysql.yaml"
-$KUBECTL apply -f "$TMPDIR_YAML/phpmyadmin.yaml"
-$KUBECTL apply -f "$TMPDIR_YAML/php74.yaml"
-$KUBECTL apply -f "$TMPDIR_YAML/php84.yaml"
-$KUBECTL apply -f "$TMPDIR_YAML/apache.yaml"
-$KUBECTL apply -f "$SCRIPT_DIR/base/redis.yaml"
-$KUBECTL apply -f "$SCRIPT_DIR/base/k8s-rbac.yaml"
+k_apply "$TMPDIR_YAML/mysql-secret.yaml"
+k_apply "$SCRIPT_DIR/base/app-env-configmap.yaml"
+k_apply "$TMPDIR_YAML/mysql-init-configmap.yaml"
+k_apply "$TMPDIR_YAML/app-code-configmap.yaml"
+k_apply "$TMPDIR_YAML/apache-config.yaml"
+k_apply "$TMPDIR_YAML/mysql.yaml"
+k_apply "$TMPDIR_YAML/phpmyadmin.yaml"
+k_apply "$TMPDIR_YAML/php74.yaml"
+k_apply "$TMPDIR_YAML/php84.yaml"
+k_apply "$TMPDIR_YAML/apache.yaml"
+k_apply "$SCRIPT_DIR/base/redis.yaml"
+k_apply "$SCRIPT_DIR/base/k8s-rbac.yaml"
 $KUBECTL apply -f "$SCRIPT_DIR/base/hpa.yaml"
 
 rm -rf "$TMPDIR_YAML"
