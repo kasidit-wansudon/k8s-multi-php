@@ -3,16 +3,18 @@
 #  K3s Installation Script สำหรับ Amazon Linux / RHEL
 #  รันบน EC2 instance (x86_64)
 #  สั่ง: sudo ./setup-k3s.sh
+#
+#  Port layout:
+#  - K3s API           : 6443 (default, internal only)
+#  - Container Apache  : 665 (HTTP), 666 (HTTPS)
+#  - phpMyAdmin        : 667
+#  - Host Apache เดิม  : 80, 443 (ไม่ยุ่ง)
 # ═══════════════════════════════════════════════════════
 
 set -e
 
-# ─── ตั้งค่า Port ─────────────────────────────────────
-K3S_PORT="${K3S_PORT:-661}"
-
 echo "═══════════════════════════════════════════════════"
 echo "  K3s Setup สำหรับ OWAY K8s Multi-PHP Lab"
-echo "  Port: $K3S_PORT"
 echo "═══════════════════════════════════════════════════"
 echo ""
 
@@ -45,7 +47,6 @@ if ! command -v docker &>/dev/null; then
   fi
   systemctl enable docker
   systemctl start docker
-  # เพิ่ม user ปัจจุบันเข้า docker group
   REAL_USER="${SUDO_USER:-$USER}"
   usermod -aG docker "$REAL_USER" 2>/dev/null || true
   echo "   ✅ Docker installed"
@@ -56,102 +57,50 @@ fi
 echo ""
 
 # ─── 2. ติดตั้ง K3s ────────────────────────────────
-echo "☸️  Installing K3s (port: $K3S_PORT)..."
+echo "☸️  Installing K3s..."
 
 if [ -x /usr/local/bin/k3s ]; then
-  echo "   ✅ K3s already installed ($(/usr/local/bin/k3s --version | head -1))"
-
-  # ตรวจสอบ K3s config — ต้องมี --service-node-port-range และ --https-listen-port
-  # และต้องไม่มี --docker (ทำให้ K3s ไม่เสถียร ใช้ containerd default แทน)
-  K3S_SERVICE_FILE="/etc/systemd/system/k3s.service"
-  NEED_RESTART=false
-
-  if [ -f "$K3S_SERVICE_FILE" ]; then
-    # เอา --docker ออก (ทำให้ K3s crash บ่อย)
-    if grep -q "'--docker'" "$K3S_SERVICE_FILE"; then
-      echo "   ⚙️  เอา --docker ออก (เปลี่ยนเป็น containerd)..."
-      sed -i "/'--docker'/d" "$K3S_SERVICE_FILE"
-      NEED_RESTART=true
-    fi
-    if ! grep -q "service-node-port-range=660-670" "$K3S_SERVICE_FILE"; then
-      echo "   ⚙️  เพิ่ม --service-node-port-range=660-670..."
-      sed -i "s|server|server --service-node-port-range=660-670|" "$K3S_SERVICE_FILE"
-      NEED_RESTART=true
-    fi
-    if ! grep -q "https-listen-port=$K3S_PORT" "$K3S_SERVICE_FILE"; then
-      echo "   ⚙️  เพิ่ม --https-listen-port=$K3S_PORT..."
-      sed -i "s|server|server --https-listen-port=$K3S_PORT|" "$K3S_SERVICE_FILE"
-      NEED_RESTART=true
-    fi
-    if [ "$NEED_RESTART" = true ]; then
-      echo "   🔄 Restarting K3s..."
-      systemctl daemon-reload
-      systemctl restart k3s
-      sleep 10
-      echo "   ✅ K3s restarted with new config"
-    else
-      echo "   ✅ K3s config already correct"
-    fi
-  fi
-
-  # ตรวจว่า K3s service รันอยู่จริง
-  if ! systemctl is-active --quiet k3s; then
-    echo "   ⚠️  K3s service ไม่ทำงาน — กำลังเริ่ม..."
-    systemctl start k3s
-    sleep 10
-  fi
-
-  # รอจน K3s พร้อม
-  echo "   ⏳ Waiting for K3s to be ready..."
-  for i in $(seq 1 30); do
-    if /usr/local/bin/k3s kubectl get nodes 2>/dev/null | grep -q "Ready"; then
-      echo "   ✅ K3s is running and ready"
-      break
-    fi
-    sleep 2
-  done
-else
-  # ติดตั้ง K3s (containerd default — เสถียรกว่า --docker)
-  # --disable=traefik: ไม่ต้องใช้ traefik (เราใช้ Apache เอง)
-  # --write-kubeconfig-mode=644: ให้ user ทั่วไปอ่าน kubeconfig ได้
-  curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable=traefik --write-kubeconfig-mode=644 --https-listen-port=$K3S_PORT --service-node-port-range=660-670" sh -
-
-  echo "   ⏳ Waiting for K3s to be ready..."
-  sleep 10
-
-  # รอจนกว่า K3s node จะ Ready
-  for i in $(seq 1 30); do
-    if /usr/local/bin/k3s kubectl get nodes 2>/dev/null | grep -q "Ready"; then
-      break
-    fi
-    sleep 2
-  done
-
-  echo "   ✅ K3s installed and running"
+  echo "   ⚠️  พบ K3s ตัวเก่าติดตั้งอยู่"
+  echo "   👉 กรุณา uninstall ก่อนแล้วรัน script นี้ใหม่:"
+  echo ""
+  echo "      sudo /usr/local/bin/k3s-uninstall.sh"
+  echo "      sudo ./setup-k3s.sh"
+  echo ""
+  exit 1
 fi
+
+# ติดตั้ง K3s — ใช้ default ทั้งหมด (เสถียรที่สุด)
+# --disable=traefik: ไม่ต้องใช้ traefik (เราใช้ Apache container เอง)
+# --write-kubeconfig-mode=644: ให้ user ทั่วไปอ่าน kubeconfig ได้
+# --service-node-port-range=660-670: เปิด NodePort ต่ำ (665/666/667)
+curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable=traefik --write-kubeconfig-mode=644 --service-node-port-range=660-670" sh -
+
+echo "   ⏳ Waiting for K3s to be ready..."
+for i in $(seq 1 30); do
+  if /usr/local/bin/k3s kubectl get nodes 2>/dev/null | grep -q "Ready"; then
+    echo "   ✅ K3s installed and running"
+    break
+  fi
+  sleep 2
+done
 
 echo ""
 
 # ─── 3. ตั้งค่า kubectl ─────────────────────────────
 echo "🔧 Configuring kubectl..."
 
-# สร้าง symlink ให้ kubectl ใช้ได้ตรงๆ
 if ! command -v kubectl &>/dev/null; then
   ln -sf /usr/local/bin/k3s /usr/local/bin/kubectl 2>/dev/null || true
 fi
 
-# ตั้ง KUBECONFIG ให้ user ทั่วไป
 REAL_USER="${SUDO_USER:-$USER}"
 REAL_HOME=$(eval echo "~$REAL_USER")
 
 mkdir -p "$REAL_HOME/.kube"
 cp /etc/rancher/k3s/k3s.yaml "$REAL_HOME/.kube/config"
-# ปรับ port ใน kubeconfig ให้ตรงกับที่กำหนด
-sed -i "s|https://127.0.0.1:6443|https://127.0.0.1:$K3S_PORT|g" "$REAL_HOME/.kube/config"
 chown "$REAL_USER:$(id -g "$REAL_USER")" "$REAL_HOME/.kube/config"
 chmod 600 "$REAL_HOME/.kube/config"
 
-# เพิ่ม KUBECONFIG ใน bashrc ถ้ายังไม่มี
 BASHRC="$REAL_HOME/.bashrc"
 if ! grep -q "KUBECONFIG" "$BASHRC" 2>/dev/null; then
   echo "" >> "$BASHRC"
@@ -181,7 +130,6 @@ echo "   System pods:"
 /usr/local/bin/k3s kubectl get pods -n kube-system
 echo ""
 
-# ตรวจ metrics-server (K3s มีในตัว)
 METRICS=$( /usr/local/bin/k3s kubectl get pods -n kube-system 2>/dev/null | grep metrics-server | wc -l)
 if [ "$METRICS" -ge 1 ]; then
   echo "   ✅ metrics-server is running (HPA จะทำงานได้)"
@@ -194,18 +142,14 @@ echo "════════════════════════�
 echo "  ✅ Setup เสร็จสมบูรณ์!"
 echo "═══════════════════════════════════════════════════"
 echo ""
-echo "  K3s API Port: $K3S_PORT"
+echo "  K3s API         : 6443 (internal)"
+echo "  Apache HTTP     : 665 (NodePort)"
+echo "  Apache HTTPS    : 666 (NodePort)"
+echo "  phpMyAdmin      : 667 (NodePort)"
 echo ""
 echo "  ขั้นตอนถัดไป:"
-echo "  1. logout แล้ว login ใหม่ (เพื่อให้ docker group มีผล)"
-echo "  2. export KUBECONFIG=/etc/rancher/k3s/k3s.yaml"
-echo "  3. ./deploy.sh"
-echo ""
-echo "  คำสั่งที่มีประโยชน์:"
-echo "  - kubectl get nodes        # ดู node status"
-echo "  - kubectl get pods -A      # ดู pods ทั้งหมด"
-echo "  - systemctl status k3s     # ดู K3s service status"
-echo "  - /usr/local/bin/k3s kubectl top nodes    # ดู resource usage"
+echo "  1. export KUBECONFIG=/etc/rancher/k3s/k3s.yaml"
+echo "  2. ./deploy.sh"
 echo ""
 echo "  ❗ ถ้าต้องการ uninstall K3s:"
 echo "  - /usr/local/bin/k3s-uninstall.sh"
